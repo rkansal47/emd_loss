@@ -4,7 +4,7 @@ Testing the energy mover's distance [1] as a loss function for particle cloud au
 
 Instructions:
 
-1)  `pip install qpth`
+1)  `pip install qpth cvxpy` (Note: for the `cvxpy` library you may need to first install the `g++` compiler with; on Ubuntu `sudo apt-get install g++`)
 2)  In your training script import the emd_loss function `from emd_loss import emd_loss`
 3)  Use it as you would e.g. MSE: `loss = emd_loss(jets_true, jets_output)`
 
