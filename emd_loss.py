@@ -6,7 +6,7 @@ from qpth.qp import QPFunction
 
 
 # derived from https://github.com/icoz69/DeepEMD/blob/master/Models/models/emd_utils.py
-def emd_inference_qpth(distance_matrix, weight1, weight2, form='QP', l2_strength=0.0001, add_energy_diff=True):
+def emd_inference_qpth(distance_matrix, weight1, weight2, device, form='QP', l2_strength=0.0001, add_energy_diff=True):
     """
     to use the QP solver QPTH to derive EMD (LP problem),
     one can transform the LP problem to QP,
@@ -28,25 +28,25 @@ def emd_inference_qpth(distance_matrix, weight1, weight2, form='QP', l2_strength
     Q_1 = distance_matrix.view(-1, 1, nelement_distmatrix).double()
     # print(Q_1)
 
-    if form == 'QP':  # TODO: figure out what it's doing here
+    if form == 'QP':  # converting to QP - after testing L2 reg performs marginally better than QP
         # version: QTQ
         Q = torch.bmm(Q_1.transpose(2, 1), Q_1).double() + 1e-4 * torch.eye(
             nelement_distmatrix).double().unsqueeze(0).repeat(nbatch, 1, 1)  # 0.00001 *
-        p = torch.zeros(nbatch, nelement_distmatrix).double()
+        p = torch.zeros(nbatch, nelement_distmatrix).double().to(device)
     elif form == 'L2':  # regularizing a trivial Q term with l2_strength
         # version: regularizer
-        Q = (l2_strength * torch.eye(nelement_distmatrix).double()).unsqueeze(0).repeat(nbatch, 1, 1)
+        Q = (l2_strength * torch.eye(nelement_distmatrix).double()).unsqueeze(0).repeat(nbatch, 1, 1).to(device)
         p = distance_matrix.view(nbatch, nelement_distmatrix).double()
     else:
         raise ValueError('Unkown form')
 
     # h = [0 ... 0 w1 w2]
-    h_1 = torch.zeros(nbatch, nelement_distmatrix).double()
+    h_1 = torch.zeros(nbatch, nelement_distmatrix).double().to(device)
     h_2 = torch.cat([weight1, weight2], 1).double()
     h = torch.cat((h_1, h_2), 1)
 
-    G_1 = -torch.eye(nelement_distmatrix).double().unsqueeze(0).repeat(nbatch, 1, 1)
-    G_2 = torch.zeros([nbatch, nelement_weight1 + nelement_weight2, nelement_distmatrix]).double()
+    G_1 = -torch.eye(nelement_distmatrix).double().unsqueeze(0).repeat(nbatch, 1, 1).to(device)
+    G_2 = torch.zeros([nbatch, nelement_weight1 + nelement_weight2, nelement_distmatrix]).double().to(device)
     # sum_j(xij) = si
     for i in range(nelement_weight1):
         G_2[:, i, nelement_weight2 * i:nelement_weight2 * (i + 1)] = 1
@@ -56,7 +56,7 @@ def emd_inference_qpth(distance_matrix, weight1, weight2, form='QP', l2_strength
 
     # xij>=0, sum_j(xij) <= si,sum_i(xij) <= dj, sum_ij(x_ij) = min(sum(si), sum(dj))
     G = torch.cat((G_1, G_2), 1)
-    A = torch.ones(nbatch, 1, nelement_distmatrix).double()
+    A = torch.ones(nbatch, 1, nelement_distmatrix).double().to(device)
     b = torch.min(torch.sum(weight1, 1), torch.sum(weight2, 1)).unsqueeze(1).double()
     flow = QPFunction(verbose=-1)(Q, p, G, h, A, b)
 
@@ -98,7 +98,7 @@ def emd(jets1, jets2, form='L2', l2_strength=0.0001):
     return emd_inference_qpth(dists, weight1, weight2, form=form, l2_strength=l2_strength)
 
 
-def emd_loss(jets1, jets2, form='L2', l2_strength=0.0001, return_flow=False):
+def emd_loss(jets1, jets2, form='L2', l2_strength=0.0001, return_flow=False, device=torch.device('cpu')):
     """
     batched Energy Mover's Distance between jets1 and jets2
     :param jets1: [nbatch * ] num_particles * 3
@@ -118,6 +118,6 @@ def emd_loss(jets1, jets2, form='L2', l2_strength=0.0001, return_flow=False):
     diffs = -(jets1[:, :, :2].unsqueeze(2) - jets2[:, :, :2].unsqueeze(1)) + 1e-12
     dists = torch.norm(diffs, dim=3)
 
-    emd_score, flow = emd_inference_qpth(dists, jets1[:, :, 2], jets2[:, :, 2], form=form, l2_strength=l2_strength)
+    emd_score, flow = emd_inference_qpth(dists, jets1[:, :, 2], jets2[:, :, 2], device, form=form, l2_strength=l2_strength)
 
     return (emd_score, flow) if return_flow else emd_score
