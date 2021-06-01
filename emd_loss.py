@@ -5,6 +5,7 @@ import numpy as np
 from qpth.qp import QPFunction
 
 
+# derived from https://github.com/icoz69/DeepEMD/blob/master/Models/models/emd_utils.py
 def emd_inference_qpth(distance_matrix, weight1, weight2, form='QP', l2_strength=0.0001, add_energy_diff=True):
     """
     to use the QP solver QPTH to derive EMD (LP problem),
@@ -61,7 +62,6 @@ def emd_inference_qpth(distance_matrix, weight1, weight2, form='QP', l2_strength
 
     if add_energy_diff: energy_diff = torch.abs(torch.sum(weight1, dim=1) - torch.sum(weight2, dim=1))
 
-    # emd_score = torch.sum((1 - Q_1).squeeze() * flow, 1)   # not sure why they're doing 1 - Q_1
     emd_score = torch.sum((Q_1).squeeze() * flow, 1)
     if add_energy_diff: emd_score += energy_diff
 
