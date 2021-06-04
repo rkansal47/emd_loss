@@ -1,4 +1,5 @@
 */*
 !*.py
 **/*test*
+!qpth/*
 .DS_Store
