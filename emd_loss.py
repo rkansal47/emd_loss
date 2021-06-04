@@ -3,6 +3,8 @@ import energyflow as ef
 import numpy as np
 
 from qpth.qp import QPFunction
+# from .qpth.qp import QPFunction
+
 
 
 # derived from https://github.com/icoz69/DeepEMD/blob/master/Models/models/emd_utils.py
