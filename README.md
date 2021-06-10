@@ -8,6 +8,9 @@ Instructions:
 2)  In the training script import the `emd_loss` function: `from emd_loss import emd_loss`
 3)  Use it as one would e.g. MSE: `loss = emd_loss(jets_true, jets_output)`
 
+Note: because of a bug in PyTorch (https://github.com/pytorch/pytorch/issues/36921, to be solved in PyTorch 1.9) **this will crash on cuda for jets with >32 particles.** 
+
+
 
 <br/><br/>
 
