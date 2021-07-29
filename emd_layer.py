@@ -29,7 +29,7 @@ class EMDLoss(nn.Module):
         objective = cp.Minimize(c.T @ x)
         problem = cp.Problem(objective, constraints)
 
-        cvxpylayer = CvxpyLayer(problem, parameters=[c, w, Emin], variables=[x])
+        self.cvxpylayer = CvxpyLayer(problem, parameters=[c, w, Emin], variables=[x])
 
 
     def forward(self, jets1, jets2, return_flow=False):
@@ -43,11 +43,11 @@ class EMDLoss(nn.Module):
         emd distance: nbatch * 1
         flow : (if return_flow) nbatch * num_particles * num_particles
         """
-        assert jets1.shape[1] == n_parts
-        assert jets2.shape[1] == n_parts
+        assert jets1.shape[1] == self.n_parts
+        assert jets2.shape[1] == self.n_parts
 
         diffs = -(jets1[:, :, :2].unsqueeze(2) - jets2[:, :, :2].unsqueeze(1)) + 1e-12
-        dists = torch.norm(diffs, dim=3).view(-1, n_parts * n_parts)
+        dists = torch.norm(diffs, dim=3).view(-1, self.n_parts * self.n_parts)
 
         weights = torch.cat((jets1[:, :, 2], jets2[:, :, 2]), dim=1)
 
@@ -57,7 +57,7 @@ class EMDLoss(nn.Module):
         Emin = torch.minimum(E1, E2).unsqueeze(1)
         EabsDiff = torch.abs(E2 - E1).unsqueeze(1)
 
-        flows, = cvxpylayer(dists, weights, Emin)
+        flows, = self.cvxpylayer(dists, weights, Emin)
 
         emds = torch.sum(dists * flows, dim=1) + EabsDiff
         return (emds, flow) if return_flow else emds
