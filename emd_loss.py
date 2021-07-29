@@ -1,5 +1,4 @@
 import torch
-import energyflow as ef
 import numpy as np
 
 from qpth.qp import QPFunction
